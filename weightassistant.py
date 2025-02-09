@@ -18,7 +18,7 @@ chat_id = os.getenv('chat_id')
 # Access db and get weight statistics
 conn = sqlite3.connect(db)
 cursor = conn.cursor()
-cursor.execute("SELECT min, created_ts FROM statistics WHERE metadata_id = ?;", (metadata_id,))
+cursor.execute("SELECT min, created_ts, max FROM statistics WHERE metadata_id = ?;", (metadata_id,))
 raw_weights = cursor.fetchall()
 conn.close()
 
@@ -60,6 +60,13 @@ while True:
     else:
         fixed_weights[i][0] = fixed_weights[i - 1][0]
         i = i + 1
+
+# Check which weight value is new because Home Assistant annoyingly stores weights as min and max, and only updates one on the event trigger
+
+if raw_weights[totalrows - 1][0] == raw_weights[totalrows - 2][0]:
+    fixed_weights[len(fixed_weights) - 1][0] = raw_weights[totalrows - 1][2]
+elif raw_weights[totalrows - 1][2] == raw_weights[totalrows - 2][2]:
+    fixed_weights[len(fixed_weights) - 1][0] = raw_weights[totalrows - 1][0]
 
 # Calculation of values
 
