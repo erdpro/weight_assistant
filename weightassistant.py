@@ -11,15 +11,23 @@ load_dotenv()
 
 # Load env variables
 db = os.getenv('db_location')
-metadata_id = os.getenv('metadata_id')
+metadata_id_statistics = os.getenv('metadata_id_statistics')
+metadata_id_states = os.getenv('metadata_id_states')
 api_token = os.getenv('api_token')
 chat_id = os.getenv('chat_id')
 
 # Access db and get weight statistics
 conn = sqlite3.connect(db)
 cursor = conn.cursor()
-cursor.execute("SELECT min, created_ts, max FROM statistics WHERE metadata_id = ?;", (metadata_id,))
+cursor.execute("SELECT min, created_ts, max FROM statistics WHERE metadata_id = ?;", (metadata_id_statistics,))
 raw_weights = cursor.fetchall()
+conn.close()
+
+# Access db and get state data for latest weight
+conn = sqlite3.connect(db)
+cursor = conn.cursor()
+cursor.execute("SELECT state, last_updated_ts FROM states WHERE metadata_id = ?;", (metadata_id_states,))
+state_weights = cursor.fetchall()
 conn.close()
 
 # Compute first day and current day
@@ -61,12 +69,8 @@ while True:
         fixed_weights[i][0] = fixed_weights[i - 1][0]
         i = i + 1
 
-# Check which weight value is new because Home Assistant annoyingly stores weights as min and max, and only updates one on the event trigger
-
-if raw_weights[totalrows - 1][0] == raw_weights[totalrows - 2][0]:
-    fixed_weights[len(fixed_weights) - 1][0] = raw_weights[totalrows - 1][2]
-elif raw_weights[totalrows - 1][2] == raw_weights[totalrows - 2][2]:
-    fixed_weights[len(fixed_weights) - 1][0] = raw_weights[totalrows - 1][0]
+# Update todays weight as the state value as it hasn't entered the statistics SQLite table yet
+fixed_weights[len(fixed_weights) - 1][0] = float(state_weights[len(state_weights) - 1][0])
 
 # Calculation of values
 
