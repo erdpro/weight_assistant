@@ -12,7 +12,7 @@ load_dotenv()
 # Load env variables
 db = os.getenv('db_location')
 metadata_id_statistics = os.getenv('metadata_id_statistics')
-metadata_id_states = os.getenv('metadata_id_states')
+entity_id = os.getenv('entity_id')
 api_token = os.getenv('api_token')
 chat_id = os.getenv('chat_id')
 
@@ -23,10 +23,17 @@ cursor.execute("SELECT min, created_ts, max FROM statistics WHERE metadata_id = 
 raw_weights = cursor.fetchall()
 conn.close()
 
+# Access db to get metadata_id from the states_meta table before getting state data
+conn = sqlite3.connect(db)
+cursor = conn.cursor()
+cursor.execute("SELECT metadata_id FROM states_meta WHERE entity_id = ?;", (entity_id,))
+metadata_id_states = cursor.fetchall()
+conn.close()
+
 # Access db and get state data for latest weight
 conn = sqlite3.connect(db)
 cursor = conn.cursor()
-cursor.execute("SELECT state, last_updated_ts FROM states WHERE metadata_id = ?;", (metadata_id_states,))
+cursor.execute("SELECT state, last_updated_ts FROM states WHERE metadata_id = ?;", (metadata_id_states[0][0],))
 state_weights = cursor.fetchall()
 conn.close()
 
